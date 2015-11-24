@@ -319,7 +319,7 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
                     raise Exception('Missing required field ' + str(attributes[attr].name) + ".")
             else:       
                 if isinstance(value,attributes[attr].value_type) == False: #check if actual value fit's value_type
-                    raise Exception('Expected ' + str(attributes[attr].value_type) + " got " + str(type(value)) + " for " + str(attributes[attr].name) + ".")
+                    raise Exception('Expected ' + str(attributes[attr].value_type) + " got " + str(type(value)) + " for " + str(attributes[attr].name) + " of " + str(self.__type_name) + ".")
             
                 if attributes[attr].name == 'id': #if the attributes name is id, set it to the object'S id, because id is not inside "attributes"
                     setattr(self,'id',value)
