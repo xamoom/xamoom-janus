@@ -311,8 +311,11 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
             value = obj #start in the object itself to search for value
             value_path = attributes[attr].mapping.split('.') #get mapping and split by '.', because this indicates a deeper path to get it.
             for path_element in value_path: #go down this path in the python object to find the value
-                current_value = getattr(value,path_element) #get the next value of current path element.
-                value = current_value() if callable(current_value) else current_value #call the attribute if it is callable otherwise just read value
+                if hasattr(value,path_element):
+                    current_value = getattr(value,path_element) #get the next value of current path element.
+                    value = current_value() if callable(current_value) else current_value #call the attribute if it is callable otherwise just read value
+                else:
+                    value = None
             
             if value == None: #check if this field is required
                 if attributes[attr].required:
