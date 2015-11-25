@@ -13,7 +13,7 @@ and also deserialize json api messages back to python objects.
 spec: http://jsonapi.org/
 """
 
-import json
+import json, logging #REMOVE TB
 import copy
 from exceptions import *
 
@@ -288,8 +288,7 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
         Used to set values from a python object, as specified in the Attribute objects
         of the sub class of this, to the values of the Attribute objects of the sub class.
         So in other words, this is the data mpping from object to DataMessage object.
-        """
-        
+        """        
         self.__data_object = obj #remember the object this message is based on
 
         #get all members of the subclass containing Attribute members that are no relations as a dict.
@@ -311,10 +310,10 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
             value = obj #start in the object itself to search for value
             value_path = attributes[attr].mapping.split('.') #get mapping and split by '.', because this indicates a deeper path to get it.
             for path_element in value_path: #go down this path in the python object to find the value
-                if hasattr(value,path_element):
+                try: #Did a simple try/except, because hassattr actually calls the member
                     current_value = getattr(value,path_element) #get the next value of current path element.
                     value = current_value() if callable(current_value) else current_value #call the attribute if it is callable otherwise just read value
-                else:
+                except AttributeError:
                     value = None
             
             if value == None: #check if this field is required
@@ -328,7 +327,6 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
                     setattr(self,'id',value)
                 else:
                     attributes[attr].value = value #set loaded value to the Attribute object's value.
-                   
                     
         #get all members of the subclass containing Attribute members that are relations as a dict.
         #key => member name in the sub class.
