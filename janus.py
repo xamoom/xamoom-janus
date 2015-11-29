@@ -412,11 +412,11 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
         """
         if isinstance(obj, (list, tuple)):
             messages = []
-            threads = []
             for o in obj: #map all objects to new meassage objects
                 msg = msg_class()
                 msg.map_object(o)
                 messages.append(msg)
+                    
             return messages
         else: #map a single object to a message object.
             msg = msg_class()
