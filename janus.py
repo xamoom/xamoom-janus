@@ -27,11 +27,13 @@ class JanusResponse(object): #JSON API Message Object see: http://jsonapi.org/fo
     message = None #the message typ to return
     data = None #an object, or a list of objects that should be returned from this message as data payload
     meta = None #custom, non json api standard meta data as dict of simple types (no objects please)
+    include_relationships = None #flag to overrule this flag in the decorator.
     
-    def __init__(self,data=None,meta=None,message=None):
+    def __init__(self,data=None,meta=None,message=None,include_relationships=None):
         self.data = data
         self.meta = meta
         self.message = message
+        self.include_relationships = include_relationships
         
         #check data
         if self.data == None:
@@ -283,7 +285,7 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
 
         return msg
 
-    def map_object(self,obj):
+    def map_object(self,obj,include_relationships=True):
         """
         Used to set values from a python object, as specified in the Attribute objects
         of the sub class of this, to the values of the Attribute objects of the sub class.
@@ -327,42 +329,50 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
                     setattr(self,'id',value)
                 else:
                     attributes[attr].value = value #set loaded value to the Attribute object's value.
+        
+        if include_relationships:          
+            #get all members of the subclass containing Attribute members that are relations as a dict.
+            #key => member name in the sub class.
+            #value => the Attribute inside of this member.
+            relations = {attr:object.__getattribute__(self,attr)
+                            for attr in dir(self)
+                                if not callable(getattr(self,attr))
+                                and type(object.__getattribute__(self,attr)) == Attribute
+                                and issubclass(object.__getattribute__(self,attr).value_type,DataMessage) == True
+                                and object.__getattribute__(self,attr).key_mapping != None
+                                and object.__getattribute__(self,attr).write_only == False
+                                and not attr.startswith("__")}
+    
+            #for each member containing an Attribute object that is a relations set its value
+            #to the value retrieved from the python object as specified in the
+            #Attribute mapping and set it to the Attribute objects value.
+            for attr in relations:
+                #load key first (for relations element)
+                key_id = obj
+                key_id_path = relations[attr].key_mapping.split('.') #get mapping to the keys of this relations and split by '.', because this indicates a deeper path to get it.
+    
+                for path_element in key_id_path: #go down this path in the python object to find the value
+                    if key_id == None:
+                        if relations[attr].required:
+                            raise InternalServerErrorException("Keypath: " + str(key_id_path) + " returned None for path element " + path_element + " on message type " + self.__type_name)
+                        else:
+                            continue # skip this not required relationship, because it'S value is None.
                     
-        #get all members of the subclass containing Attribute members that are relations as a dict.
-        #key => member name in the sub class.
-        #value => the Attribute inside of this member.
-        relations = {attr:object.__getattribute__(self,attr)
-                        for attr in dir(self)
-                            if not callable(getattr(self,attr))
-                            and type(object.__getattribute__(self,attr)) == Attribute
-                            and issubclass(object.__getattribute__(self,attr).value_type,DataMessage) == True
-                            and object.__getattribute__(self,attr).key_mapping != None
-                            and object.__getattribute__(self,attr).write_only == False
-                            and not attr.startswith("__")}
-
-        #for each member containing an Attribute object that is a relations set its value
-        #to the value retrieved from the python object as specified in the
-        #Attribute mapping and set it to the Attribute objects value.
-        for attr in relations:
-            #load key first (for relations element)
-            key_id = obj
-            key_id_path = relations[attr].key_mapping.split('.') #get mapping to the keys of this relations and split by '.', because this indicates a deeper path to get it.
-
-            for path_element in key_id_path: #go down this path in the python object to find the value
-                current_key_id = getattr(key_id,path_element) #get the next value of current path element.
-                key_id = current_key_id() if callable(current_key_id) else current_key_id #call the attribute if it is callable otherwise just read value
-
-            #now get type name for this relation
-            type_name = relations[attr].value_type.__name__
-            if hasattr(relations[attr].value_type(),'type_name') and relations[attr].value_type().type_name != None: #if sub class has a member "type_name"...
-                type_name = relations[attr].value_type().type_name #get this type name
-                
-            if isinstance(key_id,list): #one-to-many relation
-                relations[attr].key_value = {'data':[]}
-                for k in key_id:
-                    relations[attr].key_value['data'].append({'type':type_name,'id':str(k)})
-            else: #one-to-one relation
-                relations[attr].key_value = {'data':{'type':type_name,'id':str(key_id)}}
+                    current_key_id = getattr(key_id,path_element) #get the next value of current path element.
+                    key_id = current_key_id() if callable(current_key_id) else current_key_id #call the attribute if it is callable otherwise just read value
+    
+                #now get type name for this relation
+                if key_id != None:
+                    type_name = relations[attr].value_type.__name__
+                    if hasattr(relations[attr].value_type(),'type_name') and relations[attr].value_type().type_name != None: #if sub class has a member "type_name"...
+                        type_name = relations[attr].value_type().type_name #get this type name
+                        
+                    if isinstance(key_id,list): #one-to-many relation
+                        relations[attr].key_value = {'data':[]}
+                        for k in key_id:
+                            relations[attr].key_value['data'].append({'type':type_name,'id':str(k)})
+                    else: #one-to-one relation
+                        relations[attr].key_value = {'data':{'type':type_name,'id':str(key_id)}}
             
         if hasattr(self,'type_name') and self.type_name != None: #if sub class has a member "type_name"...
             self.__type_name = self.type_name #... override __type_name to set this to 'type' in the final data object.
@@ -393,7 +403,14 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
                 current_value = getattr(value,path_element) #get the next value of current path element.
                 value = current_value() if callable(current_value) else current_value #call the attribute if it is callable otherwise just read value
 
-            data = DataMessage.from_object(value,object.__getattribute__(self,attr).value_type)
+            if value == None:
+                if relations[attr].required:
+                    raise InternalServerErrorException("Keypath: " + str(key_id_path) + " returned None for path element " + path_element + " on message type " + self.__type_name)
+                else:
+                    continue # skip this not required relationship, because it'S value is None.
+        
+
+            data = DataMessage.from_object(value,object.__getattribute__(self,attr).value_type,include_relationships=False) #map but without relationships
             
             if isinstance(data,list) == True:
                 for d in data: included.append(d.to_dict())
@@ -403,7 +420,7 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
         return included
         
     @classmethod
-    def from_object(cls,obj,msg_class):
+    def from_object(cls,obj,msg_class,include_relationships=True):
         """
         Used to get a DataMessage (an object derived from DataMessage) with values in its
         Attribute members loaded from a python object according to Attribute objects mapping.
@@ -414,13 +431,13 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
             messages = []
             for o in obj: #map all objects to new meassage objects
                 msg = msg_class()
-                msg.map_object(o)
+                msg.map_object(o,include_relationships)
                 messages.append(msg)
                     
             return messages
         else: #map a single object to a message object.
             msg = msg_class()
-            msg.map_object(obj)
+            msg.map_object(obj,include_relationships)
             return msg
 
     ### REQUEST HANDLING ###

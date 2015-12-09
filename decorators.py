@@ -70,6 +70,7 @@ class jsonapi(object):
                     data = DataMessage.from_object(obj,self.message) #generate data message with data
                     
                     #take care of includes
+                    if response_obj.include_relationships != None: self.include_relationships = response_obj.include_relationships
                     included = None
                     if self.include_relationships:
                         included = self.__load_included(data)
