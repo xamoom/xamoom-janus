@@ -376,6 +376,8 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
             
         if hasattr(self,'type_name') and self.type_name != None: #if sub class has a member "type_name"...
             self.__type_name = self.type_name #... override __type_name to set this to 'type' in the final data object.
+            
+        return self
 
     def get_included(self):
         included = []
@@ -433,7 +435,7 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
                 msg = msg_class()
                 msg.map_object(o,include_relationships)
                 messages.append(msg)
-                    
+                
             return messages
         else: #map a single object to a message object.
             msg = msg_class()
@@ -655,8 +657,7 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
             message_description['relationships'].append(attr_desription)
             
         return message_description
-        
-        
+           
 class ErrorMessage(object): #JSON API Error Object see: http://jsonapi.org/format/#errors
     id = None #a unique identifier for this particular occurrence of the problem.
     status = None #the HTTP status code applicable to this problem, expressed as a string value.
