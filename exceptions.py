@@ -80,7 +80,7 @@ class UnauthorizedException(JanusException):
     def  __init__(self, detail=None, code=-1, meta = None):
         #just call super with some prefilled information fitting this special type of exception
         JanusException. __init__(self,
-            title="The request can not be process, because authorization ismissing.",
+            title="The request can not be process, because authorization is missing.",
             detail=detail,
             status=401,
             code=code,
