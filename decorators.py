@@ -28,6 +28,8 @@ class jsonapi(object):
                     before_send_hook=None,
                     include_traceback_in_errors=False,
                     error_hook=None,
+                    cached_get_hook=None,
+                    cached_set_hook=None,
                     include_relationships=False,
                     options_hook=None):
         self.meta = meta
@@ -40,6 +42,8 @@ class jsonapi(object):
         self.error_hook = error_hook
         self.include_relationships = include_relationships
         self.options_hook = options_hook
+        self.cached_get_hook = cached_get_hook
+        self.cached_set_hook = cached_set_hook
 
     def __call__(self, f):
         def wrapped_f(*a, **ka):
@@ -64,28 +68,44 @@ class jsonapi(object):
                     if isinstance(response_obj,JanusResponse) == False:
                         raise Exception('Return value has to be instance of JanusResponse')
                     
-                    self.message = response_obj.message #get the message type to return
-                    obj = response_obj.data #get the data to return
+                    message = None
                     
-                    data = DataMessage.from_object(obj,self.message) #generate data message with data
+                    #caching
+                    loaded_from_cache = False
+                    if self.cached_get_hook != None:
+                        cached_object = self.cached_get_hook(response_obj)
+                        if cached_object != None:
+                            loaded_from_cache = True                            
+                            message = cached_object #returned cached, already mapped, response
                     
-                    #take care of includes
-                    if response_obj.include_relationships != None: self.include_relationships = response_obj.include_relationships
-                    included = None
-                    if self.include_relationships:
-                        included = self.__load_included(data)
+                    if loaded_from_cache == False: #nothing in cache or cache deactivated
+                        self.message = response_obj.message #get the message type to return
+                        obj = response_obj.data #get the data to return
                         
-                    #is there custome meta?
-                    if response_obj.meta != None:
-                        if self.meta == None:
-                            self.meta = response_obj.meta
-                        else:
-                            self.meta.update(response_obj.meta)
-                    
-                    message = JsonApiMessage(data=data,included=included,meta=self.meta).to_json() #render json response
+                        data = DataMessage.from_object(obj,self.message) #generate data message with data
+                        
+                        #take care of includes
+                        if response_obj.include_relationships != None: self.include_relationships = response_obj.include_relationships
+                        included = None                        
+                        
+                        if self.include_relationships:
+                            included = self.__load_included(data)
+                            
+                        #is there custome meta?
+                        if response_obj.meta != None:
+                            if self.meta == None:
+                                self.meta = response_obj.meta
+                            else:
+                                self.meta.update(response_obj.meta)
+                        
+                        message = JsonApiMessage(data=data,included=included,meta=self.meta).to_json() #render json response
+        
+                        #caching
+                        if self.cached_set_hook != None and loaded_from_cache == False:
+                            self.cached_set_hook(response_obj,message)
     
                     if self.before_send_hook != None: #fire before send hook
-                        self.before_send_hook(self.success_status,message)
+                            self.before_send_hook(self.success_status,message)
     
                     return message
             except Exception as e:
