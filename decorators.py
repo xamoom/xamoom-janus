@@ -105,7 +105,7 @@ class jsonapi(object):
                             self.cached_set_hook(response_obj,message)
     
                     if self.before_send_hook != None: #fire before send hook
-                            self.before_send_hook(self.success_status,message)
+                            self.before_send_hook(self.success_status,message,response_obj)
     
                     return message
             except Exception as e:
