@@ -356,11 +356,19 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
                         if relations[attr].required:
                             raise InternalServerErrorException("Keypath: " + str(key_id_path) + " returned None for path element " + path_element + " on message type " + self.__type_name)
                         else:
+                            key_id = None
                             continue # skip this not required relationship, because it'S value is None.
                     
-                    current_key_id = getattr(key_id,path_element) #get the next value of current path element.
-                    key_id = current_key_id() if callable(current_key_id) else current_key_id #call the attribute if it is callable otherwise just read value
-    
+                    if hasattr(key_id,path_element):
+                        current_key_id = getattr(key_id,path_element) #get the next value of current path element.
+                        key_id = current_key_id() if callable(current_key_id) else current_key_id #call the attribute if it is callable otherwise just read value
+                    else:
+                        if relations[attr].required:
+                            raise InternalServerErrorException("Keypath: " + str(key_id_path) + " returned None for path element " + path_element + " on message type " + self.__type_name)
+                        else:
+                            key_id = None
+                            continue # skip this not required relationship, because it'S value is None.
+                        
                 #now get type name for this relation
                 if key_id != None:
                     type_name = relations[attr].value_type.__name__
@@ -402,12 +410,22 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
             value_path = relations[attr].mapping.split('.') #get mapping to the keys of this relations and split by '.', because this indicates a deeper path to get it.
 
             for path_element in value_path: #go down this path in the python object to find the value
-                current_value = getattr(value,path_element) #get the next value of current path element.
-                value = current_value() if callable(current_value) else current_value #call the attribute if it is callable otherwise just read value
+                if hasattr(value,path_element):
+                    current_value = getattr(value,path_element) #get the next value of current path element.
+                    value = current_value() if callable(current_value) else current_value #call the attribute if it is callable otherwise just read value
+                else:
+                    if relations[attr].required:
+                        raise InternalServerErrorException("Keypath: " + str(value_path) + " returned None for path element " + path_element + " on message type " + self.__type_name)
+                    else:
+                        value = None
+                        continue # skip this not required relationship, because it'S value is None.
+                
+                #current_value = getattr(value,path_element) #get the next value of current path element.
+                #value = current_value() if callable(current_value) else current_value #call the attribute if it is callable otherwise just read value
 
             if value == None:
                 if relations[attr].required:
-                    raise InternalServerErrorException("Keypath: " + str(key_id_path) + " returned None for path element " + path_element + " on message type " + self.__type_name)
+                    raise InternalServerErrorException("Keypath: " + str(value_path) + " returned None for path element " + path_element + " on message type " + self.__type_name)
                 else:
                     continue # skip this not required relationship, because it'S value is None.
         
