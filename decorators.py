@@ -60,7 +60,7 @@ class jsonapi(object):
                 #otherwise process response
                 if response_obj == None:
                     if self.before_send_hook != None:
-                        self.before_send_hook(204,None)
+                        self.before_send_hook(204,None,None)
                         
                     return None
                 else:
@@ -105,7 +105,7 @@ class jsonapi(object):
                             self.cached_set_hook(response_obj,message)
     
                     if self.before_send_hook != None: #fire before send hook
-                            self.before_send_hook(self.success_status,message,response_obj)
+                        self.before_send_hook(self.success_status,message,response_obj)
     
                     return message
             except Exception as e:
@@ -165,7 +165,7 @@ class describe(object):
                 #otherwise process response
                 if messages == None:
                     if self.before_send_hook != None:
-                        self.before_send_hook(204,None)
+                        self.before_send_hook(204,None,None)
                         
                     return None
                 else:
@@ -184,7 +184,7 @@ class describe(object):
                     message = JsonApiMessage(meta=meta).to_json() #render json response
     
                     if self.before_send_hook != None: #fire before send hook
-                        self.before_send_hook(self.success_status,message)
+                        self.before_send_hook(self.success_status,message,None)
     
                     return message
             except Exception as e:
