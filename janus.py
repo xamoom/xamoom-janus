@@ -216,9 +216,37 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
         the actual member to be set instead of overriding the whole object on
         assignment.
         """
-        if type(object.__getattribute__(self,name)) == Attribute:
+        if type(object.__getattribute__(self,name)) == Attribute or name == "id":
+            #if this set's id we also set id to the member that contains id in the subclass
+            if name == "id":
+                object.__setattr__(self, name, value) #set value to id
+                
+                #check if there is a id attribute in the subclass
+                result = [attr for attr in dir(self)
+                            if not callable(getattr(self,attr))
+                            and type(object.__getattribute__(self,attr)) == Attribute
+                            and issubclass(object.__getattribute__(self,attr).value_type,DataMessage) == False
+                            and object.__getattribute__(self,attr).mapping != None
+                            and object.__getattribute__(self,attr).name == 'id'
+                            and not attr.startswith("__")]
+                
+                if len(result) == 1: #id attribute found
+                    name = result[0]
+                    #logging.info("Id Attribute: " + name)
+                
+            #try to convert to desired type for simple types
+            if issubclass(object.__getattribute__(self,name).value_type,DataMessage) == False:
+                _type = object.__getattribute__(self,name).value_type
+                try:
+                    value = _type(value)
+                except:
+                    raise AttributeError("Failed to convert " + str(value) + " to " + str(_type) + " in " + self.__type_name)
+                
+                #logging.info("__setattr__: " + str(name) + " : " + str(value) + " : " + str(type(value)))
+                
             object.__getattribute__(self,name).value = value
             object.__getattribute__(self,name).updated = True
+            
         else: #if the member does not contain an Attribute object, act normal.
             object.__setattr__(self, name, value)
 
@@ -513,7 +541,8 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
                     else:
                         rel_object = relations[attr].value_type()
                         rel_object.id = message['relationships'][relations[attr].name]['data']['id']
-                        rel_objects.append(rel_object)
+                        #rel_objects.append(rel_object)
+                        rel_objects = rel_object
                     
                     setattr(self,attr,rel_objects)
                     setattr(relations[attr],'updated',True) #mark this attribute as updated for later updating the backend object
