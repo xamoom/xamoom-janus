@@ -530,6 +530,9 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
         """
         json_message = json.loads(raw_message) #parse raw_message to json
         
+        if json_message == None: #no request body
+            return None
+        
         #get data part
         data = None
         if json_message.has_key('data'):
