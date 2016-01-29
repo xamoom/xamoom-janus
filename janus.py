@@ -207,6 +207,32 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
         #which is bad. ;-)
         for attr in attributes:
             object.__setattr__(self,attr,copy.deepcopy(object.__getattribute__(self,attr)))
+            
+    def __get_id_attribute(self):
+        #check if there is a id attribute in the subclass
+        result = [attr for attr in dir(self)
+                    if not callable(getattr(self,attr))
+                    and type(object.__getattribute__(self,attr)) == Attribute
+                    and issubclass(object.__getattribute__(self,attr).value_type,DataMessage) == False
+                    and object.__getattribute__(self,attr).mapping != None
+                    and object.__getattribute__(self,attr).name == 'id'
+                    and not attr.startswith("__")]
+        
+        if len(result) == 1: #id attribute found
+            return result[0]
+        else:
+            raise Exception(self.__type_name + " is missing Attribute 'id'.")
+        
+    def __convert_to_value_type(self,name,value):
+        #try to convert to desired type for simple types
+        if issubclass(object.__getattribute__(self,name).value_type,DataMessage) == False:
+            _type = object.__getattribute__(self,name).value_type
+            try:
+                return _type(value)
+            except:
+                raise AttributeError("Failed to convert " + str(value) + " to " + str(_type) + " in " + self.__type_name)
+        else:
+            return value
 
     def __setattr__(self, name, value):
         """
@@ -218,34 +244,19 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
         """
         if type(object.__getattribute__(self,name)) == Attribute or name == "id":
             #if this set's id we also set id to the member that contains id in the subclass
+            is_id = False
             if name == "id":
-                object.__setattr__(self, name, value) #set value to id
+                is_id = True
+                name = self.__get_id_attribute()
                 
-                #check if there is a id attribute in the subclass
-                result = [attr for attr in dir(self)
-                            if not callable(getattr(self,attr))
-                            and type(object.__getattribute__(self,attr)) == Attribute
-                            and issubclass(object.__getattribute__(self,attr).value_type,DataMessage) == False
-                            and object.__getattribute__(self,attr).mapping != None
-                            and object.__getattribute__(self,attr).name == 'id'
-                            and not attr.startswith("__")]
-                
-                if len(result) == 1: #id attribute found
-                    name = result[0]
-                    #logging.info("Id Attribute: " + name)
-                
-            #try to convert to desired type for simple types
-            if issubclass(object.__getattribute__(self,name).value_type,DataMessage) == False:
-                _type = object.__getattribute__(self,name).value_type
-                try:
-                    value = _type(value)
-                except:
-                    raise AttributeError("Failed to convert " + str(value) + " to " + str(_type) + " in " + self.__type_name)
-                
-                #logging.info("__setattr__: " + str(name) + " : " + str(value) + " : " + str(type(value)))
-                
+            #convert value to defined value_type
+            value = self.__convert_to_value_type(name, value)
+            
+            #set value
             object.__getattribute__(self,name).value = value
             object.__getattribute__(self,name).updated = True
+            
+            if is_id: object.__setattr__(self, "id", value) #set value to id
             
         else: #if the member does not contain an Attribute object, act normal.
             object.__setattr__(self, name, value)
@@ -635,10 +646,18 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
                     actual_attr = path_element
                     
                 i = i + 1
+                           
+            #extract ids and set to object            
+            if isinstance(object.__getattribute__(self,attr).value,(list,tuple)):
+                ids = [r.id for r in object.__getattribute__(self,attr).value]
                 
-            #extract ids and set to object
-            ids = [r.id for r in object.__getattribute__(self,attr).value]
-            setattr(attr_obj, actual_attr, ids)
+                logging.info("PARSE RELATIONS ID: " + str(ids))
+                for i in ids:
+                    logging.info("PARSE RELATIONS ID: " + str(type(i)))
+                
+                setattr(attr_obj, actual_attr, ids)
+            else:
+                setattr(attr_obj, actual_attr, object.__getattribute__(self,attr).value.id)
             
         return obj
     
