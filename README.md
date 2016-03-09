@@ -1,3 +1,2 @@
 # xamoom-janus
-A module to map python objects to json api compatible messages and also map json api messages back to python objects.
-This module is intended to fast and easy build RESTful webservices using python webframeworks like bottlepy or similar that follow the json:api specification.
+xamoom-janus is a lightweight Python framework to easily build RESTful [json:api](http://jsonapi.org/) webservices on top of frameworks like [Bottle](http://bottlepy.org/) or [Flask](http://flask.pocoo.org/). It takes care of generating valid json:api messages from your internal python objects and also the other way around. There is no need for you as a developer anymore to take care about rendering or parsing JSON. Just work with your objects and let janus do the json:api magic.
