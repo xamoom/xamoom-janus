@@ -6,6 +6,16 @@ __email__ = "bruno@xamoom.com"
 __status__ = "Development"
 
 """
+Copyright (c) 2015, xamoom GmbH
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+"""
+
+"""
 janus
 
 A module to serialze python objects to json api compatible messages
@@ -83,7 +93,7 @@ class JsonApiMessage(object): #JSON API Message Object see: http://jsonapi.org/f
         """
         if value != None:
             if (name == "errors" and self.data != None) or (name == "data" and self.errors != None):
-                raise Exception('JSON Api message may only contain data or erros, not both.')
+                raise Exception('JSON Api message may only contain data or errors, not both.')
 
         #call default __setattr__
         object.__setattr__(self, name, value)
@@ -224,15 +234,19 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
             raise Exception(self.__type_name + " is missing Attribute 'id'.")
         
     def __convert_to_value_type(self,name,value):
-        #try to convert to desired type for simple types
-        if issubclass(object.__getattribute__(self,name).value_type,DataMessage) == False:
-            _type = object.__getattribute__(self,name).value_type
-            try:
-                return _type(value)
-            except:
-                raise AttributeError("Failed to convert " + str(value) + " to " + str(_type) + " in " + self.__type_name)
+        if value == None:
+            return None
         else:
-            return value
+            #try to convert to desired type for simple types
+            if issubclass(object.__getattribute__(self,name).value_type,DataMessage) == False:
+                _type = object.__getattribute__(self,name).value_type
+                try:
+                    return _type(value)
+                except:
+                    #raise AttributeError("Failed to convert " + str(value) + " to " + str(_type) + " in " + self.__type_name)
+                    raise BadRequestException(detail="Attr:" + name + " expected " + str(_type) + " got value:" + str(value), code=742) #see error code at -> https://github.com/joho/7XX-rfc
+            else:
+                return value
 
     def __setattr__(self, name, value):
         """
