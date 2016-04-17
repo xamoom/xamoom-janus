@@ -2,7 +2,7 @@
 
 xamoom-janus is a lightweight Python framework to easily build RESTful [json:api](http://jsonapi.org/) webservices on top of frameworks like [Bottle](http://bottlepy.org/) or [Flask](http://flask.pocoo.org/). It takes care of generating valid json:api messages from your internal python objects and also the other way round. You, as a developer, don't have to take care about rendering or parsing JSON any longer. Just work with your objects and let janus do the json:api magic.
 
-Because janus is designed to be an extension to existing Python web frameworks this will basically work the same with other frameworks than Bottle or Flask, like [CherryPy](http://www.cherrypy.org/) or [WebPy](http://www.cherrypy.org/).
+Because janus is designed to be an extension to existing Python web frameworks this will basically work the same with other frameworks than Bottle or Flask, like [CherryPy](http://www.cherrypy.org/) or [Web2Py](http://www.web2py.com/).
 
 # Example using Bottle
 All you have to do is add a jsonapi decorator to your service method and let the service method return a JanusResponse object containing your python data object, or list of objects, and also your message class, that defines how your object is mapped to the json:api message.
