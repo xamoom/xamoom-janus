@@ -565,8 +565,15 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
                             rel_objects.append(rel_object)
                     else:
                         rel_object = relations[attr].value_type()
-                        rel_object.id = message['relationships'][relations[attr].name]['data']['id']
-                        #rel_objects.append(rel_object)
+                        
+                        rel_data = message['relationships'][relations[attr].name]['data']
+                        
+                        #removed releationships result in "None" data part. We use None id to idicate this state internally.
+                        if rel_data == None:
+                            rel_object.id = None
+                        else:
+                            rel_object.id = message['relationships'][relations[attr].name]['data']['id']
+                        
                         rel_objects = rel_object
                     
                     setattr(self,attr,rel_objects)
