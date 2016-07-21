@@ -123,6 +123,19 @@ class NotFoundException(JanusException):
             code=code,
             meta=meta)
 
+class DeveloperException(JanusException):
+    """
+    represents an Exception caused by Developer Error
+    """
+    def  __init__(self, title="Developer Error", detail=None, code=-1, meta = None, status = 500):
+        #just call super with some prefilled information fitting this special type of exception
+        JanusException. __init__(self,
+            title=title,
+            detail=detail,
+            status=500,
+            code=code,
+            meta=meta)
+
 class InternalServerErrorException(JanusException):
     """
     represents a Internal Server Error exception (HTTP 500)
