@@ -483,7 +483,8 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
                     continue # skip this not required relationship, because it'S value is None.
         
 
-            data = DataMessage.from_object(value,object.__getattribute__(self,attr).value_type,include_relationships=False) #map but without relationships
+            #data = DataMessage.from_object(value,object.__getattribute__(self,attr).value_type,include_relationships=False) #map but without relationships
+            data = DataMessage.from_object(value,object.__getattribute__(self,attr).value_type,include_relationships=True) #map now with relationships
             
             if isinstance(data,list) == True:
                 for d in data: included.append(d.to_dict())
