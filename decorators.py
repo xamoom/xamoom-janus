@@ -23,6 +23,7 @@ spec: http://jsonapi.org/
 """
 import traceback
 
+from janus_logging import janus_logger
 from janus import DataMessage
 from janus import JsonApiMessage
 from janus import ErrorMessage
@@ -41,7 +42,8 @@ class jsonapi(object):
                     cached_get_hook=None,
                     cached_set_hook=None,
                     include_relationships=False,
-                    options_hook=None):
+                    options_hook=None,
+                    logging=False):
         self.meta = meta
         self.links = links
         self.included = included
@@ -54,6 +56,11 @@ class jsonapi(object):
         self.options_hook = options_hook
         self.cached_get_hook = cached_get_hook
         self.cached_set_hook = cached_set_hook
+        
+        if logging:
+            janus_logger.enable()
+        else:
+            janus_logger.disable()
 
     def __call__(self, f):
         def wrapped_f(*a, **ka):
@@ -61,7 +68,9 @@ class jsonapi(object):
                 #first check if this is not a HTTP OPTIONS call using a method defined based on the  WS framework.
                 #if it is one return empty array and do nothing else.
                 if self.options_hook != None:
-                    if self.options_hook() == True: return {}
+                    if self.options_hook() == True:
+                        janus_logger.debug("This was an OPTIONS request.")
+                        return {}
                     
                 response_obj = f(*a, **ka)
                 
@@ -71,22 +80,27 @@ class jsonapi(object):
                 if response_obj == None:
                     if self.before_send_hook != None:
                         self.before_send_hook(204,None,None)
-                        
+                    
+                    janus_logger.debug("Decorated function returned None. Nothing to map.")
                     return None
                 else:
                     #check response object
                     if isinstance(response_obj,JanusResponse) == False:
+                        janus_logger.error("Expected JanusResponse got " + str(type(response_obj)))
                         raise Exception('Return value has to be instance of JanusResponse')
                     
                     message = None
                     
                     #caching
                     loaded_from_cache = False
+                    
                     if self.cached_get_hook != None:
                         cached_object = self.cached_get_hook(response_obj)
                         if cached_object != None:
                             loaded_from_cache = True                            
                             message = cached_object #returned cached, already mapped, response
+                            
+                    janus_logger.info("Will return cached message: " + str(loaded_from_cache))
                     
                     if loaded_from_cache == False: #nothing in cache or cache deactivated
                         self.message = response_obj.message #get the message type to return
@@ -98,6 +112,7 @@ class jsonapi(object):
                         if response_obj.include_relationships != None: self.include_relationships = response_obj.include_relationships
                         included = None                        
                         
+                        janus_logger.info("Should map included: " + str(self.include_relationships))
                         if self.include_relationships:
                             included = self.__load_included(data)
                             
@@ -112,6 +127,7 @@ class jsonapi(object):
         
                         #caching
                         if self.cached_set_hook != None and loaded_from_cache == False:
+                            janus_logger.debug("Caching message")
                             self.cached_set_hook(response_obj,message)
     
                     if self.before_send_hook != None: #fire before send hook
@@ -130,6 +146,8 @@ class jsonapi(object):
                     self.error_hook(int(err_msg.status),err_msg,tb)
 
                 message = JsonApiMessage(errors=err_msg,meta=self.meta).to_json()
+
+                janus_logger.error("Traceback: " + tb)
 
                 return message
 
@@ -151,7 +169,7 @@ class jsonapi(object):
                 clean_included.append(item)
                 
         return clean_included
-    
+
 class describe(object):
 
     def __init__(   self,
@@ -214,5 +232,8 @@ class describe(object):
 
 
         return wrapped_f
-   
+        
+        
+    
+
     

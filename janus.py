@@ -23,7 +23,8 @@ and also deserialize json api messages back to python objects.
 spec: http://jsonapi.org/
 """
 
-import json, logging #REMOVE TB
+import json
+from janus_logging import janus_logger
 import copy
 from exceptions import *
 
@@ -47,18 +48,22 @@ class JanusResponse(object): #JSON API Message Object see: http://jsonapi.org/fo
         
         #check data
         if self.data == None:
+            janus_logger.error("JanusResponse data can't be None.")
             raise Exception("JanusResponse data can't be None.")
         
         #check message
         if self.message == None:
+            janus_logger.error("JanusResponse message can't be None.")
             raise Exception("JanusResponse message can't be None.")
         
         #check message type
         if issubclass(self.message,DataMessage) == False:
+            janus_logger.error("JanusResponse message must be subclass of janus.DataMessage.")
             raise Exception("JanusResponse message must be subclass of janus.DataMessage.")
         
         #check meta
         if self.meta != None and isinstance(self.meta,dict) == False:
+            janus_logger.error("Meta has to be a dict with non jsonapi standard information.")
             raise Exception('Meta has to be a dict with non jsonapi standard information.')
 
 class JsonApiMessage(object): #JSON API Message Object see: http://jsonapi.org/format/#document-structure
@@ -93,6 +98,7 @@ class JsonApiMessage(object): #JSON API Message Object see: http://jsonapi.org/f
         """
         if value != None:
             if (name == "errors" and self.data != None) or (name == "data" and self.errors != None):
+                janus_logger.error("JSON Api message may only contain data or errors, not both.")
                 raise Exception('JSON Api message may only contain data or errors, not both.')
 
         #call default __setattr__
@@ -100,7 +106,7 @@ class JsonApiMessage(object): #JSON API Message Object see: http://jsonapi.org/f
 
     def to_json(self):
         """
-        returns a json representation of the mesaage.
+        returns a json representation of the message.
         This is always a valid json api message according to http://jsonapi.org/format/#document-structure
         """
 
@@ -122,8 +128,12 @@ class JsonApiMessage(object): #JSON API Message Object see: http://jsonapi.org/f
         if self.included != None: msg['included'] = self.included #if included is present add it to the message
         
         if self.meta != None: msg['meta'] = self.meta #if meta is present add it to the message
+        
+        json_msg = json.loads(json.dumps(msg)) #serialize dict to json and return
+        
+        janus_logger.debug("Transformed whole message object to json.")
 
-        return json.loads(json.dumps(msg)) #serialize dict to json and return
+        return json_msg
 
 class Attribute(object): #Attribute Class to map Data from input Object to Message Object
     """
@@ -166,12 +176,14 @@ class Attribute(object): #Attribute Class to map Data from input Object to Messa
             if issubclass(value_type,DataMessage): #relationship
                 self.key_mapping = key_mapping
         else:
+            janus_logger.error('Value Type must be either be a simple type such as ' + str(self.__primitive_types) + ', a subclass of DataMessage or a list or dict containing these types.')
             raise Exception('Value Type must be either be a simple type such as ' + str(self.__primitive_types) + ', a subclass of DataMessage or a list or dict containing these types.')
 
     #TODO USE THIS WHEN OBJECT GETS FILLED WITH VALUES
     def __check_list(self,list_value):
         for item in list_value:
             if not item in self.__primitive_types:
+                janus_logger.error('Attribute ' + self.name + ' contains invalid object of type ' + str(type(item)) + ". Valid types are " + str(self.__primitive_types))
                 raise Exception('Attribute ' + self.name + ' contains invalid object of type ' + str(type(item)) + ". Valid types are " + str(self.__primitive_types))
 
 class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/#document-structure
@@ -231,6 +243,7 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
         if len(result) == 1: #id attribute found
             return result[0]
         else:
+            janus_logger.error(self.__type_name + " is missing Attribute 'id'.")
             raise Exception(self.__type_name + " is missing Attribute 'id'.")
         
     def __convert_to_value_type(self,name,value):
@@ -243,9 +256,9 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
                 try:
                     return _type(value)
                 except:
-                    #raise AttributeError("Failed to convert " + str(value) + " to " + str(_type) + " in " + self.__type_name)
-                    raise BadRequestException(detail="Attr:" + name + " expected " + str(_type) + " got value:" + str(value), code=742) #see error code at -> https://github.com/joho/7XX-rfc
-            else:
+                    janus_logger.error("Failed to convert " + str(value) + " to " + str(_type) + " in " + self.__type_name)
+                    raise AttributeError("Failed to convert " + str(value) + " to " + str(_type) + " in " + self.__type_name)
+            else: 
                 return value
 
     def __setattr__(self, name, value):
@@ -270,7 +283,8 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
             object.__getattribute__(self,name).value = value
             object.__getattribute__(self,name).updated = True
             
-            if is_id: object.__setattr__(self, "id", value) #set value to id
+            if is_id:
+                object.__setattr__(self, "id", value) #set value to id
             
         else: #if the member does not contain an Attribute object, act normal.
             object.__setattr__(self, name, value)
@@ -336,6 +350,8 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
         #if there are relations we add them to the dict using "relations" as key.
         if len(relations.keys()) > 0: msg['relationships'] = relations
 
+        janus_logger.debug("Transformed message object to dict.")
+
         return msg
 
     def map_object(self,obj,include_relationships=True):
@@ -343,7 +359,9 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
         Used to set values from a python object, as specified in the Attribute objects
         of the sub class of this, to the values of the Attribute objects of the sub class.
         So in other words, this is the data mpping from object to DataMessage object.
-        """        
+        """
+        janus_logger.debug("Starting to map object to message.")
+        
         self.__data_object = obj #remember the object this message is based on
 
         #get all members of the subclass containing Attribute members that are no relations as a dict.
@@ -373,9 +391,11 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
             
             if value == None: #check if this field is required
                 if attributes[attr].required:
+                    janus_logger.error('Missing required field ' + str(attributes[attr].name) + ".")
                     raise Exception('Missing required field ' + str(attributes[attr].name) + ".")
             else:       
                 if isinstance(value,attributes[attr].value_type) == False: #check if actual value fit's value_type
+                    janus_logger.error('Expected ' + str(attributes[attr].value_type) + " got " + str(type(value)) + " for " + str(attributes[attr].name) + " of " + str(self.__type_name) + ".")
                     raise Exception('Expected ' + str(attributes[attr].value_type) + " got " + str(type(value)) + " for " + str(attributes[attr].name) + " of " + str(self.__type_name) + ".")
             
                 if attributes[attr].name == 'id': #if the attributes name is id, set it to the object'S id, because id is not inside "attributes"
@@ -407,6 +427,7 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
                 for path_element in key_id_path: #go down this path in the python object to find the value
                     if key_id == None:
                         if relations[attr].required:
+                            janus_logger.error("Keypath: " + str(key_id_path) + " returned None for path element " + path_element + " on message type " + self.__type_name)
                             raise InternalServerErrorException("Keypath: " + str(key_id_path) + " returned None for path element " + path_element + " on message type " + self.__type_name)
                         else:
                             key_id = None
@@ -417,6 +438,7 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
                         key_id = current_key_id() if callable(current_key_id) else current_key_id #call the attribute if it is callable otherwise just read value
                     else:
                         if relations[attr].required:
+                            janus_logger.error("Keypath: " + str(key_id_path) + " returned None for path element " + path_element + " on message type " + self.__type_name)
                             raise InternalServerErrorException("Keypath: " + str(key_id_path) + " returned None for path element " + path_element + " on message type " + self.__type_name)
                         else:
                             key_id = None
@@ -438,9 +460,12 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
         if hasattr(self,'type_name') and self.type_name != None: #if sub class has a member "type_name"...
             self.__type_name = self.type_name #... override __type_name to set this to 'type' in the final data object.
             
+        janus_logger.debug("Finished mapping object to message. ID: " + str(self.id) + " TYPE NAME: " + str(self.__type_name))
+            
         return self
 
     def get_included(self):
+        janus_logger.debug("Loading and mapping included objects.")
         included = []
         
         #get all members of the subclass containing Attribute members that are relations and have a mapping as a dict.
@@ -468,6 +493,7 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
                     value = current_value() if callable(current_value) else current_value #call the attribute if it is callable otherwise just read value
                 else:
                     if relations[attr].required:
+                        janus_logger.error("Keypath: " + str(value_path) + " returned None for path element " + path_element + " on message type " + self.__type_name)
                         raise InternalServerErrorException("Keypath: " + str(value_path) + " returned None for path element " + path_element + " on message type " + self.__type_name)
                     else:
                         value = None
@@ -478,6 +504,7 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
 
             if value == None:
                 if relations[attr].required:
+                    janus_logger.error("Keypath: " + str(value_path) + " returned None for path element " + path_element + " on message type " + self.__type_name)
                     raise InternalServerErrorException("Keypath: " + str(value_path) + " returned None for path element " + path_element + " on message type " + self.__type_name)
                 else:
                     continue # skip this not required relationship, because it'S value is None.
@@ -490,7 +517,9 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
                 for d in data: included.append(d.to_dict())
             else:
                 included.append(data.to_dict())
-            
+        
+        janus_logger.debug("Loaded and mapped " + str(len(included)) + " included objects.")
+        
         return included
         
     @classmethod
@@ -521,6 +550,7 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
         of the sub class of this, to the values of the Attribute objects of the sub class.
         So in other words, this is the data mapping from message to DataMessage object.
         """
+        janus_logger.debug("Starting to map json message to DataMessage object.")
         
         #get id
         if message.has_key('id'):
@@ -543,6 +573,7 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
                     setattr(attributes[attr],'updated',True) #mark this attribute as updated for later updating the backend object
                 else:
                     if attributes[attr].required == True:
+                        janus_logger.error('Missing required field ' + str(attributes[attr].name) + ".")
                         raise Exception('Missing required field ' + str(attributes[attr].name) + ".")
                     
         if message.has_key('relationships'):
@@ -581,6 +612,7 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
                     setattr(relations[attr],'updated',True) #mark this attribute as updated for later updating the backend object
                 else:
                     if relations[attr].required == True:
+                        janus_logger.error('Missing required field ' + str(relations[attr].name) + ".")
                         raise Exception('Missing required field ' + str(relations[attr].name) + ".")
     
     @classmethod
@@ -600,6 +632,7 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
         if json_message.has_key('data'):
             data = json_message['data']
         else:
+            janus_logger.error("Message is missing data.")
             raise Exception("Message is missing data.")
         
         msg = msg_class()
@@ -614,6 +647,7 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
         So in other words, this is the data mapping from DataMessage to backend object.
         Read-Only Attributes are also skipped.
         """
+        janus_logger.debug("Starting to update object from DataMessage object.")
         
         attributes = {attr:object.__getattribute__(self,attr)
                         for attr in dir(self)
@@ -672,12 +706,7 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
                            
             #extract ids and set to object            
             if isinstance(object.__getattribute__(self,attr).value,(list,tuple)):
-                ids = [r.id for r in object.__getattribute__(self,attr).value]
-                
-                logging.info("PARSE RELATIONS ID: " + str(ids))
-                for i in ids:
-                    logging.info("PARSE RELATIONS ID: " + str(type(i)))
-                
+                ids = [r.id for r in object.__getattribute__(self,attr).value]                
                 setattr(attr_obj, actual_attr, ids)
             else:
                 setattr(attr_obj, actual_attr, object.__getattribute__(self,attr).value.id)
