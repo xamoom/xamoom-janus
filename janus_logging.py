@@ -3,7 +3,7 @@ import logging
 class janus_logger(object):
     
     __prefix = "JANUS: "
-    __enabled = True
+    enabled = True
     
     @classmethod
     def enable(cls):

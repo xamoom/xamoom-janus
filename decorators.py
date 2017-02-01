@@ -43,6 +43,7 @@ class jsonapi(object):
                     cached_set_hook=None,
                     include_relationships=False,
                     options_hook=None,
+                    nest_in_responses=False,
                     logging=False):
         self.meta = meta
         self.links = links
@@ -56,6 +57,7 @@ class jsonapi(object):
         self.options_hook = options_hook
         self.cached_get_hook = cached_get_hook
         self.cached_set_hook = cached_set_hook
+        self.nest_in_responses = nest_in_responses
         
         if logging:
             janus_logger.enable()
@@ -86,8 +88,10 @@ class jsonapi(object):
                 else:
                     #check response object
                     if isinstance(response_obj,JanusResponse) == False:
-                        janus_logger.error("Expected JanusResponse got " + str(type(response_obj)))
-                        raise Exception('Return value has to be instance of JanusResponse')
+                        #janus_logger.error("Expected JanusResponse got " + str(type(response_obj)))
+                        #raise Exception('Return value has to be instance of JanusResponse')
+                        janus_logger.info("Not a JanusResponse. Will return this as it is. No mapping.")
+                        return response_obj
                     
                     message = None
                     
@@ -100,13 +104,13 @@ class jsonapi(object):
                             loaded_from_cache = True                            
                             message = cached_object #returned cached, already mapped, response
                             
-                    janus_logger.info("Will return cached message: " + str(loaded_from_cache))
+                            janus_logger.info("Will return cached message: " + str(loaded_from_cache))
                     
                     if loaded_from_cache == False: #nothing in cache or cache deactivated
                         self.message = response_obj.message #get the message type to return
                         obj = response_obj.data #get the data to return
                         
-                        data = DataMessage.from_object(obj,self.message) #generate data message with data
+                        data = DataMessage.from_object(obj,self.message,do_nesting=self.nest_in_responses) #generate data message with data
                         
                         #take care of includes
                         if response_obj.include_relationships != None: self.include_relationships = response_obj.include_relationships
@@ -123,7 +127,7 @@ class jsonapi(object):
                             else:
                                 self.meta.update(response_obj.meta)
                         
-                        message = JsonApiMessage(data=data,included=included,meta=self.meta).to_json() #render json response
+                        message = JsonApiMessage(data=data,included=included,meta=self.meta,do_nesting=self.nest_in_responses).to_json() #render json response
         
                         #caching
                         if self.cached_set_hook != None and loaded_from_cache == False:

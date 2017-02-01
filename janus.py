@@ -77,8 +77,10 @@ class JsonApiMessage(object): #JSON API Message Object see: http://jsonapi.org/f
     meta = None #custom, non json api standard meta data as dict of simple types (no objects please)
     errors = None #a list of objects derived from janus.ErrorMessage or a list of such objects. Represents a json api error object.
     included = None #an array of resource objects that are related to the primary data and/or each other ("included resources").
+    
+    do_nesting=False #indicates if Attributes marked with nested=True should be nested or just treated like normal relationships in responses
 
-    def __init__(self,data=None,errors=None,included=None,meta=None):
+    def __init__(self,data=None,errors=None,included=None,meta=None,do_nesting=False):
         """
         initializes the object
         at least one of the three objects (data,errors,meta) has to be set.
@@ -91,6 +93,8 @@ class JsonApiMessage(object): #JSON API Message Object see: http://jsonapi.org/f
         self.meta = meta
         
         self.included = included
+        
+        self.do_nesting = do_nesting
 
     def __setattr__(self, name, value):
         """
@@ -115,9 +119,9 @@ class JsonApiMessage(object): #JSON API Message Object see: http://jsonapi.org/f
             if isinstance(self.data, (list, tuple)): #if data is list of objects transform these objects to a list of dicts
                 #call to_dict on all data objects to get a dict representation of the data object
                 #and write this as a list to the message
-                msg['data'] = [d.to_dict() for d in self.data]
+                msg['data'] = [d.to_dict(do_nesting=self.do_nesting) for d in self.data]
             else:
-                msg['data'] = self.data.to_dict() #set the data object dicts to the message
+                msg['data'] = self.data.to_dict(do_nesting=self.do_nesting) #set the data object dicts to the message
 
         if self.errors != None:
             if isinstance(self.errors, (list, tuple)):
@@ -155,11 +159,14 @@ class Attribute(object): #Attribute Class to map Data from input Object to Messa
     key_mapping = None #tells the mapping function how to get type and id of a related entity without loading the whole entity. This is used only for relationships.
     key_value = None #holds the actual key
     
+    nested = False #used for nested objects (Embedded Records in ember.js)
+    nested_type = None #the type used to deserialize nested message to.
+    
     read_only = False #only for request messages. If property is readonly it won't be serialized back. #TODO implement this.
     write_only = False #only for request messages. If property is writeonly it won't be included in responses (passwords on users for example). #TODO implement this.
     updated = False #only for request messages. True if property was present in the request and therefor has to be updated.
     
-    def __init__(self,value_type=value_type,name=name,required=False,mapping=None,key_mapping=None,read_only=False,write_only=False):
+    def __init__(self,value_type=value_type,name=name,required=False,mapping=None,key_mapping=None,read_only=False,write_only=False,nested=False,nested_type=None):
         """
         initializes the object
         sets all needed configurations and checks if value is a primitive type or list or dict.
@@ -172,6 +179,12 @@ class Attribute(object): #Attribute Class to map Data from input Object to Messa
             self.mapping = mapping
             self.read_only = read_only
             self.write_only = write_only
+            self.nested = nested
+            self.nested_type=nested_type
+            
+            if nested == True and nested_type == None:
+                janus_logger.error('If nested == True nested_type has to be set.')
+                raise Exception('If nested == True nested_type has to be set.')
             
             if issubclass(value_type,DataMessage): #relationship
                 self.key_mapping = key_mapping
@@ -303,7 +316,13 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
         except AttributeError: #if message does not contain an Attribute, return None
             return None
 
-    def to_dict(self):
+    def nested_to_dict(self,nested_obj):
+        if isinstance(nested_obj,(list,tuple)):
+            return [o.to_dict() for o in nested_obj]
+        else:
+            return nested_obj.to_dict()
+
+    def to_dict(self,do_nesting=False):
         """
         Returns a dict representation of this objects's members containing Attribute
         objects, with their configured name as key and their values.
@@ -320,12 +339,13 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
         #None as value and their name is not id, because id is treated diferrently, as a
         #a dict fitting the jsonapi specification for the data objects "attributes" member.
         #key => attribute name as specified in the Attribute object
-        #value => the loaded valvue from the object(s) given to "from_object"
+        #value => the loaded value from the object(s) given to "from_object"
         attributes = {object.__getattribute__(self,attr).name:object.__getattribute__(self,attr).value
                         for attr in dir(self)
                             if not callable(object.__getattribute__(self,attr))
                             and type(object.__getattribute__(self,attr)) == Attribute
                             and issubclass(object.__getattribute__(self,attr).value_type,DataMessage) == False
+                            #and object.__getattribute__(self,attr).nested == False
                             and not attr.startswith("__")
                             and object.__getattribute__(self,attr).name != 'id'
                             and object.__getattribute__(self,attr).value != None}
@@ -343,18 +363,56 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
                             if not callable(object.__getattribute__(self,attr))
                             and type(object.__getattribute__(self,attr)) == Attribute
                             and issubclass(object.__getattribute__(self,attr).value_type,DataMessage) == True
+                            and object.__getattribute__(self,attr).nested == False
                             and not attr.startswith("__")
                             and object.__getattribute__(self,attr).name != 'id'
                             and object.__getattribute__(self,attr).key_value != None}
 
         #if there are relations we add them to the dict using "relations" as key.
         if len(relations.keys()) > 0: msg['relationships'] = relations
-
+        
+        ##nested records
+        #get all members of the subclass containing Attribute members that are nested records, which do not contain
+        #None as value value and their name is not id, because id is treated diferrently.
+        #key => attribute name as specified in the Attribute object
+        #value => the loaded object serialized to json api message
+        nested = {}
+        if do_nesting:
+            nested = {
+                            object.__getattribute__(self,attr).name:{'data':self.nested_to_dict(DataMessage.from_object(object.__getattribute__(self,attr).value,object.__getattribute__(self,attr).value_type))}
+                                        for attr in dir(self)
+                                            if not callable(object.__getattribute__(self,attr))
+                                            and type(object.__getattribute__(self,attr)) == Attribute
+                                            and issubclass(object.__getattribute__(self,attr).value_type,DataMessage) == True
+                                            and object.__getattribute__(self,attr).nested == True
+                                            and not attr.startswith("__")
+                                            and object.__getattribute__(self,attr).name != 'id'
+                                            and object.__getattribute__(self,attr).value != None
+                                }
+        else:
+            nested = {
+                        object.__getattribute__(self,attr).name:object.__getattribute__(self,attr).key_value 
+                                    for attr in dir(self)
+                                        if not callable(object.__getattribute__(self,attr))
+                                        and type(object.__getattribute__(self,attr)) == Attribute
+                                        and issubclass(object.__getattribute__(self,attr).value_type,DataMessage) == True
+                                        and object.__getattribute__(self,attr).nested == True
+                                        and not attr.startswith("__")
+                                        and object.__getattribute__(self,attr).name != 'id'
+                                        and object.__getattribute__(self,attr).key_value != None
+                            }
+        
+        if len(nested.keys()) > 0:
+            if msg.has_key('relationships'):
+                msg['relationships'].update(nested)
+            else:
+                msg['relationships'] = nested
+        
         janus_logger.debug("Transformed message object to dict.")
 
         return msg
 
-    def map_object(self,obj,include_relationships=True):
+    def map_object(self,obj,include_relationships=True,do_nesting=False):
         """
         Used to set values from a python object, as specified in the Attribute objects
         of the sub class of this, to the values of the Attribute objects of the sub class.
@@ -372,6 +430,7 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
                             if not callable(getattr(self,attr))
                             and type(object.__getattribute__(self,attr)) == Attribute
                             and issubclass(object.__getattribute__(self,attr).value_type,DataMessage) == False
+                            and object.__getattribute__(self,attr).nested == False
                             and object.__getattribute__(self,attr).mapping != None
                             and object.__getattribute__(self,attr).write_only == False
                             and not attr.startswith("__")}
@@ -395,13 +454,49 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
                     raise Exception('Missing required field ' + str(attributes[attr].name) + ".")
             else:       
                 if isinstance(value,attributes[attr].value_type) == False: #check if actual value fit's value_type
-                    janus_logger.error('Expected ' + str(attributes[attr].value_type) + " got " + str(type(value)) + " for " + str(attributes[attr].name) + " of " + str(self.__type_name) + ".")
-                    raise Exception('Expected ' + str(attributes[attr].value_type) + " got " + str(type(value)) + " for " + str(attributes[attr].name) + " of " + str(self.__type_name) + ".")
+                    if ((attributes[attr].value_type == str or attributes[attr].value_type == unicode) and (isinstance(value,str) or isinstance(value,unicode))) == False:
+                        janus_logger.error('Expected ' + str(attributes[attr].value_type) + " got " + str(type(value)) + " for " + str(attributes[attr].name) + " of " + str(self.__type_name) + ".")
+                        raise Exception('Expected ' + str(attributes[attr].value_type) + " got " + str(type(value)) + " for " + str(attributes[attr].name) + " of " + str(self.__type_name) + ".")
             
                 if attributes[attr].name == 'id': #if the attributes name is id, set it to the object'S id, because id is not inside "attributes"
                     setattr(self,'id',value)
                 else:
                     attributes[attr].value = value #set loaded value to the Attribute object's value.
+        
+        if do_nesting:
+            #nested records
+            #get all members of the subclass containing Attribute members that are nested as a dict.
+            #key => member name in the sub class.
+            #value => the Attribute inside of this member.
+            nested = {attr:object.__getattribute__(self,attr)
+                            for attr in dir(self)
+                                if not callable(getattr(self,attr))
+                                and type(object.__getattribute__(self,attr)) == Attribute
+                                and issubclass(object.__getattribute__(self,attr).value_type,DataMessage) == True
+                                and object.__getattribute__(self,attr).nested == True
+                                and object.__getattribute__(self,attr).mapping != None
+                                and object.__getattribute__(self,attr).write_only == False
+                                and not attr.startswith("__")}
+            
+            #for each member containing an Attribute object that is nested set its value (nested object)
+            #to the value retrieved from the python object as specified in the
+            #Attribute mapping and set it to the Attribute objects value.
+            for attr in nested:            
+                value = obj #start in the object itself to search for value
+                value_path = nested[attr].mapping.split('.') #get mapping and split by '.', because this indicates a deeper path to get it.
+                for path_element in value_path: #go down this path in the python object to find the value
+                    try: #Did a simple try/except, because hassattr actually calls the member
+                        current_value = getattr(value,path_element) #get the next value of current path element.
+                        value = current_value() if callable(current_value) else current_value #call the attribute if it is callable otherwise just read value
+                    except AttributeError:
+                        value = None
+                
+                if value == None: #check if this field is required
+                    if nested[attr].required:
+                        janus_logger.error('Missing required field ' + str(nested[attr].name) + ".")
+                        raise Exception('Missing required field ' + str(nested[attr].name) + ".")
+                
+                nested[attr].value = value #set loaded value to the Attribute object's value.
         
         if include_relationships:          
             #get all members of the subclass containing Attribute members that are relations as a dict.
@@ -412,6 +507,7 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
                                 if not callable(getattr(self,attr))
                                 and type(object.__getattribute__(self,attr)) == Attribute
                                 and issubclass(object.__getattribute__(self,attr).value_type,DataMessage) == True
+                                and (object.__getattribute__(self,attr).nested == False or do_nesting == False)
                                 and object.__getattribute__(self,attr).key_mapping != None
                                 and object.__getattribute__(self,attr).write_only == False
                                 and not attr.startswith("__")}
@@ -476,6 +572,7 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
                             if not callable(getattr(self,attr))
                             and type(object.__getattribute__(self,attr)) == Attribute
                             and issubclass(object.__getattribute__(self,attr).value_type,DataMessage) == True
+                            #and object.__getattribute__(self,attr).nested == False
                             and object.__getattribute__(self,attr).mapping != None
                             and not attr.startswith("__")}
 
@@ -523,7 +620,7 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
         return included
         
     @classmethod
-    def from_object(cls,obj,msg_class,include_relationships=True):
+    def from_object(cls,obj,msg_class,include_relationships=True,do_nesting=False):
         """
         Used to get a DataMessage (an object derived from DataMessage) with values in its
         Attribute members loaded from a python object according to Attribute objects mapping.
@@ -534,13 +631,13 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
             messages = []
             for o in obj: #map all objects to new meassage objects
                 msg = msg_class()
-                msg.map_object(o,include_relationships)
+                msg.map_object(o,include_relationships,do_nesting=do_nesting)
                 messages.append(msg)
                 
             return messages
         else: #map a single object to a message object.
             msg = msg_class()
-            msg.map_object(obj,include_relationships)
+            msg.map_object(obj,include_relationships,do_nesting=do_nesting)
             return msg
 
     ### REQUEST HANDLING ###
@@ -563,6 +660,7 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
                                 if not callable(getattr(self,attr))
                                 and type(object.__getattribute__(self,attr)) == Attribute
                                 and issubclass(object.__getattribute__(self,attr).value_type,DataMessage) == False
+                                and object.__getattribute__(self,attr).nested == False
                                 and object.__getattribute__(self,attr).mapping != None
                                 and object.__getattribute__(self,attr).name != 'id'
                                 and not attr.startswith("__")}
@@ -576,6 +674,36 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
                         janus_logger.error('Missing required field ' + str(attributes[attr].name) + ".")
                         raise Exception('Missing required field ' + str(attributes[attr].name) + ".")
                     
+            if message.has_key('relationships'):
+                #get nested attributes
+                nested = {attr:object.__getattribute__(self,attr)
+                                for attr in dir(self)
+                                    if not callable(getattr(self,attr))
+                                    and type(object.__getattribute__(self,attr)) == Attribute
+                                    and issubclass(object.__getattribute__(self,attr).value_type,DataMessage) == True
+                                    and object.__getattribute__(self,attr).nested == True
+                                    and object.__getattribute__(self,attr).mapping != None
+                                    and object.__getattribute__(self,attr).name != 'id'
+                                    and not attr.startswith("__")}
+                
+                for attr in nested:
+                    val = message['relationships'][nested[attr].name]['data']
+                    if message['relationships'].has_key(nested[attr].name):
+                        if isinstance(val,(list,tuple)):
+                            val_list = []
+                            for v in val:
+                                val_list.append(DataMessage.from_message(json.dumps({'data':v}),object.__getattribute__(self,attr).value_type))
+                                
+                            setattr(self,attr,val_list)
+                        else:
+                            setattr(self,attr,DataMessage.from_message(json.dumps(val),object.__getattribute__(self,attr).value_type))
+                            
+                        setattr(nested[attr],'updated',True) #mark this attribute as updated for later updating the backend object
+                    else:
+                        if attributes[attr].required == True:
+                            janus_logger.error('Missing required field ' + str(attributes[attr].name) + ".")
+                            raise Exception('Missing required field ' + str(attributes[attr].name) + ".")
+                    
         if message.has_key('relationships'):
             #get relationships
             relations = {attr:object.__getattribute__(self,attr)
@@ -583,6 +711,7 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
                                 if not callable(getattr(self,attr))
                                 and type(object.__getattribute__(self,attr)) == Attribute
                                 and issubclass(object.__getattribute__(self,attr).value_type,DataMessage) == True
+                                and object.__getattribute__(self,attr).nested == False
                                 and object.__getattribute__(self,attr).key_mapping != None
                                 and object.__getattribute__(self,attr).name != 'id'
                                 and not attr.startswith("__")}
@@ -654,12 +783,12 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
                             if not callable(getattr(self,attr))
                             and type(object.__getattribute__(self,attr)) == Attribute
                             and issubclass(object.__getattribute__(self,attr).value_type,DataMessage) == False
+                            and object.__getattribute__(self,attr).nested == False
                             and object.__getattribute__(self,attr).updated == True
                             and object.__getattribute__(self,attr).read_only == False
                             and object.__getattribute__(self,attr).mapping != None
                             and object.__getattribute__(self,attr).name != 'id'
                             and not attr.startswith("__")}
-        
         
         for attr in attributes:
             attr_obj = obj
@@ -675,15 +804,62 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
                     
                 i = i + 1
                     
-            #set value to to the attr i nthe subobject
+            #set value to to the attr in the subobject
             setattr(attr_obj, actual_attr, object.__getattribute__(self,attr).value)
             
+        #nested objects  
+        nested = {attr:object.__getattribute__(self,attr)
+                        for attr in dir(self)
+                            if not callable(getattr(self,attr))
+                            and type(object.__getattribute__(self,attr)) == Attribute
+                            and issubclass(object.__getattribute__(self,attr).value_type,DataMessage) == True
+                            and object.__getattribute__(self,attr).nested == True
+                            and object.__getattribute__(self,attr).updated == True
+                            and object.__getattribute__(self,attr).read_only == False
+                            and object.__getattribute__(self,attr).mapping != None
+                            and object.__getattribute__(self,attr).name != 'id'
+                            and not attr.startswith("__")}
+        
+        for attr in nested:
+            attr_obj = obj
+            attr_path = nested[attr].mapping.split('.') #get mapping and split by '.', because this indicates a deeper path to get it.
+            actual_attr = None
+            i = 1
+            for path_element in attr_path: #go down this path in the python object to find the value
+                if i < len(attr_path): #go down the path, but exclude the last element to get the parent object of the attribute
+                    current_attr_obj = getattr(attr_obj,path_element) #get the next value of current path element.
+                    attr_obj = current_attr_obj() if callable(current_attr_obj) else current_attr_obj #call the attribute if it is callable otherwise just read value
+                else: #the last element is what we actually want to set
+                    actual_attr = path_element
+                    
+                i = i + 1
+                    
+            #map nested object(s)
+            nested_message_value = object.__getattribute__(self,attr).value
+            new_value = None
+            if nested_message_value != None:
+                if isinstance(nested_message_value,(list,tuple)): #list value
+                    new_value = [] #initialize list
+                    
+                    for nested_message in nested_message_value:
+                        new_obj = object.__getattribute__(self,attr).nested_type()
+                        nested_message.update_object(new_obj)
+                        new_value.append(new_obj)
+                else: #single object
+                    new_obj = object.__getattribute__(self,attr).nested_type()
+                    nested_message_value.update_object(new_obj)
+                    new_value = new_obj
+                    
+            #set nested object(s) to the attr in the subobject
+            setattr(attr_obj, actual_attr, new_value)
             
+        #relationships  
         relations = {attr:object.__getattribute__(self,attr)
                         for attr in dir(self)
                             if not callable(getattr(self,attr))
                             and type(object.__getattribute__(self,attr)) == Attribute
                             and issubclass(object.__getattribute__(self,attr).value_type,DataMessage) == True
+                            and object.__getattribute__(self,attr).nested == False
                             and object.__getattribute__(self,attr).updated == True
                             and object.__getattribute__(self,attr).read_only == False
                             and object.__getattribute__(self,attr).key_mapping != None
