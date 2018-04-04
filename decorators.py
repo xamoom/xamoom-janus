@@ -118,7 +118,7 @@ class jsonapi(object):
                         
                         janus_logger.info("Should map included: " + str(self.include_relationships))
                         if self.include_relationships:
-                            included = self.__load_included(data)
+                            included = self.__load_included(data,self.nest_in_responses)
                             
                         #is there custome meta?
                         if response_obj.meta != None:
@@ -158,13 +158,13 @@ class jsonapi(object):
 
         return wrapped_f
     
-    def __load_included(self, data_message):
+    def __load_included(self, data_message,do_nesting=False):
         included = []
         if isinstance(data_message,list):
             for d in data_message:
-                included = included + d.get_included()
+                included = included + d.get_included(do_nesting=do_nesting)
         else:
-             included = data_message.get_included()
+             included = data_message.get_included(do_nesting=do_nesting)
              
         #clean dublicates from included
         clean_included = []
