@@ -140,7 +140,7 @@ class Attribute(object): #Attribute Class to map Data from input Object to Messa
     transformation to json.
     """
 
-    __primitive_types = (str,bytes,int,long,float,bool) #all allowed types for attribute values. (lists and dicts are also allowed, but treated differently)
+    __primitive_types = (str,bytes,int,float,bool) #all allowed types for attribute values. (lists and dicts are also allowed, but treated differently)
 
     value = None #holds the actual value of this attribute once it is set.
 
