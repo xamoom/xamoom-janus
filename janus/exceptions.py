@@ -1,11 +1,5 @@
-__author__ = "Bruno Hautzenberger"
-__copyright__ = "Copyright 2015, xamoom GmbH"
-__maintainer__ = "Bruno Hautzenberger"
-__email__ = "bruno@xamoom.com"
-__status__ = "Development"
-
 """
-Copyright (c) 2015, xamoom GmbH
+Copyright (c) 2018, xamoom GmbH
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 

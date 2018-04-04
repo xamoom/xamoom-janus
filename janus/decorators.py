@@ -1,11 +1,5 @@
-__author__ = "Bruno Hautzenberger"
-__copyright__ = "Copyright 2015, xamoom GmbH"
-__maintainer__ = "Bruno Hautzenberger"
-__email__ = "bruno@xamoom.com"
-__status__ = "Development"
-
 """
-Copyright (c) 2015, xamoom GmbH
+Copyright (c) 2018, xamoom GmbH
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -58,7 +52,7 @@ class jsonapi(object):
         self.cached_get_hook = cached_get_hook
         self.cached_set_hook = cached_set_hook
         self.nest_in_responses = nest_in_responses
-        
+
         if logging:
             janus_logger.enable()
         else:
@@ -73,16 +67,16 @@ class jsonapi(object):
                     if self.options_hook() == True:
                         janus_logger.debug("This was an OPTIONS request.")
                         return {}
-                    
+
                 response_obj = f(*a, **ka)
-                
+
                 #first check if there is an response object
                 #if not nothing to return so HTTP 204
                 #otherwise process response
                 if response_obj == None:
                     if self.before_send_hook != None:
                         self.before_send_hook(204,None,None)
-                    
+
                     janus_logger.debug("Decorated function returned None. Nothing to map.")
                     return None
                 else:
@@ -92,51 +86,51 @@ class jsonapi(object):
                         #raise Exception('Return value has to be instance of JanusResponse')
                         janus_logger.info("Not a JanusResponse. Will return this as it is. No mapping.")
                         return response_obj
-                    
+
                     message = None
-                    
+
                     #caching
                     loaded_from_cache = False
-                    
+
                     if self.cached_get_hook != None:
                         cached_object = self.cached_get_hook(response_obj)
                         if cached_object != None:
-                            loaded_from_cache = True                            
+                            loaded_from_cache = True
                             message = cached_object #returned cached, already mapped, response
-                            
+
                             janus_logger.info("Will return cached message: " + str(loaded_from_cache))
-                    
+
                     if loaded_from_cache == False: #nothing in cache or cache deactivated
                         self.message = response_obj.message #get the message type to return
                         obj = response_obj.data #get the data to return
-                        
+
                         data = DataMessage.from_object(obj,self.message,do_nesting=self.nest_in_responses) #generate data message with data
-                        
+
                         #take care of includes
                         if response_obj.include_relationships != None: self.include_relationships = response_obj.include_relationships
-                        included = None                        
-                        
+                        included = None
+
                         janus_logger.info("Should map included: " + str(self.include_relationships))
                         if self.include_relationships:
                             included = self.__load_included(data,self.nest_in_responses)
-                            
+
                         #is there custome meta?
                         if response_obj.meta != None:
                             if self.meta == None:
                                 self.meta = response_obj.meta
                             else:
                                 self.meta.update(response_obj.meta)
-                        
+
                         message = JsonApiMessage(data=data,included=included,meta=self.meta,do_nesting=self.nest_in_responses).to_json() #render json response
-        
+
                         #caching
                         if self.cached_set_hook != None and loaded_from_cache == False:
                             janus_logger.debug("Caching message")
                             self.cached_set_hook(response_obj,message)
-    
+
                     if self.before_send_hook != None: #fire before send hook
                         self.before_send_hook(self.success_status,message,response_obj)
-    
+
                     return message
             except Exception as e:
                 err_msg = ErrorMessage.from_exception(e)
@@ -157,7 +151,7 @@ class jsonapi(object):
 
 
         return wrapped_f
-    
+
     def __load_included(self, data_message,do_nesting=False):
         included = []
         if isinstance(data_message,list):
@@ -165,13 +159,13 @@ class jsonapi(object):
                 included = included + d.get_included(do_nesting=do_nesting)
         else:
              included = data_message.get_included(do_nesting=do_nesting)
-             
+
         #clean dublicates from included
         clean_included = []
         for item in included:
             if (item in clean_included) == False:
                 clean_included.append(item)
-                
+
         return clean_included
 
 class describe(object):
@@ -190,34 +184,34 @@ class describe(object):
         def wrapped_f(*a, **ka):
             try:
                 #if this decorator is used the function must return all messages that should be described as a list
-                messages = f(*a, **ka) 
-                
+                messages = f(*a, **ka)
+
                 #first check if there is an response object
                 #if not nothing to return so HTTP 204
                 #otherwise process response
                 if messages == None:
                     if self.before_send_hook != None:
                         self.before_send_hook(204,None,None)
-                        
+
                     return None
                 else:
                     if isinstance(messages, (list, tuple)) == False:
                         raise Exception('Methods using the "describe" decorator have to return a list of subclasses of DataMessage to describe.')
-                        
+
                     msg_descriptions = []
                     for msg in messages:
                         if issubclass(msg,DataMessage) == False:
                             raise Exception('All returned classes in the returned list have to be a subclass of DataMessage.')
-                        
+
                         msg_descriptions.append(msg().describe())
-                    
+
                     meta = {'message-types':msg_descriptions}
-                    
+
                     message = JsonApiMessage(meta=meta).to_json() #render json response
-    
+
                     if self.before_send_hook != None: #fire before send hook
                         self.before_send_hook(self.success_status,message,None)
-    
+
                     return message
             except Exception as e:
                 err_msg = ErrorMessage.from_exception(e)
@@ -236,8 +230,3 @@ class describe(object):
 
 
         return wrapped_f
-        
-        
-    
-
-    
