@@ -17,9 +17,9 @@ spec: http://jsonapi.org/
 """
 
 import json
-from janus_logging import janus_logger
+from janus.janus_logging import janus_logger
 import copy
-from exceptions import *
+from janus.exceptions import *
 
 class JanusResponse(object): #JSON API Message Object see: http://jsonapi.org/format/#document-structure
     """

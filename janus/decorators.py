@@ -17,11 +17,11 @@ spec: http://jsonapi.org/
 """
 import traceback
 
-from janus_logging import janus_logger
-from janus import DataMessage
-from janus import JsonApiMessage
-from janus import ErrorMessage
-from janus import JanusResponse
+from janus.janus_logging import janus_logger
+from janus.janus import DataMessage
+from janus.janus import JsonApiMessage
+from janus.janus import ErrorMessage
+from janus.janus import JanusResponse
 
 class jsonapi(object):
 
