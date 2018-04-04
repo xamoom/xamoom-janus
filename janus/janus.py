@@ -140,7 +140,7 @@ class Attribute(object): #Attribute Class to map Data from input Object to Messa
     transformation to json.
     """
 
-    __primitive_types = (unicode,str,int,long,float,bool) #all allowed types for attribute values. (lists and dicts are also allowed, but treated differently)
+    __primitive_types = (str,bytes,int,long,float,bool) #all allowed types for attribute values. (lists and dicts are also allowed, but treated differently)
 
     value = None #holds the actual value of this attribute once it is set.
 
@@ -447,7 +447,7 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
                     raise Exception('Missing required field ' + str(attributes[attr].name) + ".")
             else:
                 if isinstance(value,attributes[attr].value_type) == False: #check if actual value fit's value_type
-                    if ((attributes[attr].value_type == str or attributes[attr].value_type == unicode) and (isinstance(value,str) or isinstance(value,unicode))) == False:
+                    if ((attributes[attr].value_type == str or attributes[attr].value_type == str) and (isinstance(value,bytes) or isinstance(value,str))) == False:
                         janus_logger.error('Expected ' + str(attributes[attr].value_type) + " got " + str(type(value)) + " for " + str(attributes[attr].name) + " of " + str(self.__type_name) + ".")
                         raise Exception('Expected ' + str(attributes[attr].value_type) + " got " + str(type(value)) + " for " + str(attributes[attr].name) + " of " + str(self.__type_name) + ".")
 
