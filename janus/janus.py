@@ -396,7 +396,7 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
                             }
 
         if len(nested.keys()) > 0:
-            if msg.has_key('relationships'):
+            if 'relationships' in msg:
                 msg['relationships'].update(nested)
             else:
                 msg['relationships'] = nested
@@ -681,10 +681,10 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
         janus_logger.debug("Starting to map json message to DataMessage object.")
 
         #get id
-        if message.has_key('id'):
+        if 'id' in message:
             self.id = message['id']
 
-        if message.has_key('attributes'):
+        if 'attributes' in message:
             #get attributes
             attributes = {attr:object.__getattribute__(self,attr)
                             for attr in dir(self)
@@ -697,7 +697,7 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
                                 and not attr.startswith("__")}
 
             for attr in attributes:
-                if message['attributes'].has_key(attributes[attr].name):
+                if attributes[attr].name in message['attributes']:
                     setattr(self,attr,message['attributes'][attributes[attr].name])
                     setattr(attributes[attr],'updated',True) #mark this attribute as updated for later updating the backend object
                 else:
@@ -705,7 +705,7 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
                         janus_logger.error('Missing required field ' + str(attributes[attr].name) + ".")
                         raise Exception('Missing required field ' + str(attributes[attr].name) + ".")
 
-            if message.has_key('relationships'):
+            if 'relationships' in message:
                 #get nested attributes
                 nested = {attr:object.__getattribute__(self,attr)
                                 for attr in dir(self)
@@ -718,7 +718,7 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
                                     and not attr.startswith("__")}
 
                 for attr in nested:
-                    if message['relationships'].has_key(nested[attr].name):
+                    if nested[attr].name in message['relationships']:
                         val = message['relationships'][nested[attr].name]['data']
 
                         if isinstance(val,(list,tuple)):
@@ -736,7 +736,7 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
                             janus_logger.error('Missing required field ' + str(nested[attr].name) + ".")
                             raise Exception('Missing required field ' + str(nested[attr].name) + ".")
 
-        if message.has_key('relationships'):
+        if 'relationships' in message:
             #get relationships
             relations = {attr:object.__getattribute__(self,attr)
                             for attr in dir(self)
@@ -749,7 +749,7 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
                                 and not attr.startswith("__")}
 
             for attr in relations:
-                if message['relationships'].has_key(relations[attr].name):
+                if relations[attr].name in message['relationships']:
                     rel_objects = []
                     if isinstance(message['relationships'][relations[attr].name]['data'], (list, tuple)):
                         for item in message['relationships'][relations[attr].name]['data']:
@@ -790,7 +790,7 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
 
         #get data part
         data = None
-        if json_message.has_key('data'):
+        if 'data' in json_message:
             data = json_message['data']
         else:
             janus_logger.error("Message is missing data.")
