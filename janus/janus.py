@@ -1013,7 +1013,7 @@ class ErrorMessage(object): #JSON API Error Object see: http://jsonapi.org/forma
             msg.detail = exception.detail
             msg.meta = exception.meta
         else:
-            msg.id = hashlib.sha1(str(time.time()) + str(exception)).hexdigest()
+            msg.id = hashlib.sha1((str(time.time()) + str(exception)).encode('utf-8')).hexdigest()
             msg.status = 500
             msg.code = 500 #TODO add code for uncaught exception
             msg.title = "Internal Server Error"

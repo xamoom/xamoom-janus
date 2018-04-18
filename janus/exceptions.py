@@ -58,12 +58,14 @@ class JanusException(Exception):
         #we use a string representation of all we got in details plus timestamp as hash to identify this error.
         #So we can search for it in the logs, if we need to.
         self.id = hashlib.sha1(
-                                str(time.time()) +
+                                (
+				str(time.time()) +
                                 str(self.title) +
                                 str(self.detail) +
                                 str(self.status) +
                                 str(self.code) +
                                 str(self.meta)
+				).encode('utf-8')
                               ).hexdigest()
 
 class BadRequestException(JanusException):
