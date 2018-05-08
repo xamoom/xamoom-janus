@@ -819,7 +819,7 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
                             and object.__getattribute__(self,attr).updated == True
                             and object.__getattribute__(self,attr).read_only == False
                             and object.__getattribute__(self,attr).mapping != None
-                            and object.__getattribute__(self,attr).name != 'id'
+                            #and object.__getattribute__(self,attr).name != 'id'
                             and not attr.startswith("__")}
 
         for attr in attributes:
@@ -849,7 +849,7 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
                             and object.__getattribute__(self,attr).updated == True
                             and object.__getattribute__(self,attr).read_only == False
                             and object.__getattribute__(self,attr).mapping != None
-                            and object.__getattribute__(self,attr).name != 'id'
+                            #and object.__getattribute__(self,attr).name != 'id'
                             and not attr.startswith("__")}
 
         for attr in nested:
