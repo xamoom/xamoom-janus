@@ -814,7 +814,7 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
                         for attr in dir(self)
                             if not callable(getattr(self,attr))
                             and type(object.__getattribute__(self,attr)) == Attribute
-                            and issubclass(object.__getattribute__(self,attr).value_type,DataMessage) == False
+                            #and issubclass(object.__getattribute__(self,attr).value_type,DataMessage) == False
                             and object.__getattribute__(self,attr).nested == False
                             and object.__getattribute__(self,attr).updated == True
                             and object.__getattribute__(self,attr).read_only == False
