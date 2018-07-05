@@ -20,7 +20,8 @@ import json
 from janus.janus_logging import janus_logger
 import copy
 from janus.exceptions import *
-from janus.thread_util import ThreadWithReturnValue, mapper_task
+from janus.thread_util import mapper_task
+from multiprocessing import Process, Manager
 
 class JanusResponse(object): #JSON API Message Object see: http://jsonapi.org/format/#document-structure
     """
@@ -660,16 +661,21 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
         msg_class => the class (derived from DataMessage) which should be used as message class. (This class will be initialized and returned)
         """
         if isinstance(obj, (list, tuple)):
+            manager = Manager()
+            messages = manager.list(range(len(obj)))
+
             tasks = []
-            for o in obj: #map all objects to new meassage objects
-                tasks.append(ThreadWithReturnValue(target=mapper_task, args=(msg_class,o,include_relationships,do_nesting)))
+            pos = 0
+            for o in obj:  # map all objects to new meassage objects
+                tasks.append(
+                    Process(target=mapper_task, args=(messages, pos, msg_class, o, include_relationships, do_nesting)))
+                pos = pos + 1
 
             for t in tasks:
                 t.start()
 
-            messages = []
             for t in tasks:
-                messages.append(t.join())
+                t.join()
 
             return messages
         else: #map a single object to a message object.

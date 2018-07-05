@@ -14,50 +14,34 @@ threading
 contains helpers to map object to messages in threads
 
 """
+from multiprocessing import Process, Manager
 
-from threading import Thread
-
-
-class ThreadWithReturnValue(Thread):
-    def __init__(self, group=None, target=None, name=None,
-                 args=(), kwargs={}, Verbose=None):
-        Thread.__init__(self, group, target, name, args, kwargs)
-        self._return = None
-
-    def run(self):
-        print(type(self._target))
-        if self._target is not None:
-            self._return = self._target(*self._args,**self._kwargs)
-
-    def join(self):
-        Thread.join(self)
-        return self._return
-
-
-def mapper_task(msg_class, o, include_relationships, do_nesting):
+def mapper_task(result_list,pos,msg_class, o, include_relationships, do_nesting):
     msg = msg_class()
     msg.map_object(o, include_relationships, do_nesting=do_nesting)
-    return msg
+    result_list[pos] = msg
 
+""" TEST 
 import time,random
 
-
-def do_something(i):
+def do_something(i,l):
     time.sleep(random.randint(1,8))
     print("Done {}".format(i))
-    return i
+    l[i] = "x"*i
 
+manager = Manager()
+l = manager.list(range(10))
 
 ts = []
 for i in range(10):
-    ts.append(ThreadWithReturnValue(target=do_something, args=(i,)))
+    ts.append(Process(target=do_something, args=(i, l)))
 
 for t in ts:
     t.start()
 
-r = []
 for t in ts:
-    r.append(t.join())
+    t.join()
 
-for x in r:
+for x in l:
     print(x)
+"""
