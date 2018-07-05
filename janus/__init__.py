@@ -1,6 +1,6 @@
 __author__ = "Bruno Hautzenberger"
 __copyright__ = "Copyright 2018, xamoom GmbH"
-__version__ = "1.1.2"
+__version__ = "1.1.3"
 __maintainer__ = "Bruno Hautzenberger"
 __email__ = "bruno@xamoom.com"
 __status__ = "Production"

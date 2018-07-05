@@ -14,12 +14,45 @@ threading
 contains helpers to map object to messages in threads
 
 """
-from multiprocessing import Process, Manager
+#from multiprocessing import Process, Manager
 
 def mapper_task(result_list,pos,msg_class, o, include_relationships, do_nesting):
     msg = msg_class()
     msg.map_object(o, include_relationships, do_nesting=do_nesting)
+
+    print("####### {}".format(result_list))
     result_list[pos] = msg
+
+
+"""
+class test():
+
+    result = None
+
+    def map_object(self, o, include_relationships, do_nesting=None):
+        self.result =  "x"*o
+
+obj = [1,2,3]
+
+manager = Manager()
+messages = manager.list(range(len(obj)))
+
+tasks = []
+pos = 0
+for o in obj:  # map all objects to new meassage objects
+    tasks.append(
+        Process(target=mapper_task, args=(messages, pos, test, o, None, None)))
+    pos = pos + 1
+
+for t in tasks:
+    t.start()
+
+for t in tasks:
+    t.join()
+
+for m in messages:
+    print(m.result)
+"""
 
 """ TEST 
 import time,random
