@@ -19,8 +19,6 @@ contains helpers to map object to messages in threads
 def mapper_task(result_list,pos,msg_class, o, include_relationships, do_nesting):
     msg = msg_class()
     msg.map_object(o, include_relationships, do_nesting=do_nesting)
-
-    print("####### {}".format(result_list))
     result_list[pos] = msg
 
 

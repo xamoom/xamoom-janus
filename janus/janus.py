@@ -662,13 +662,13 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
         """
         if isinstance(obj, (list, tuple)):
             manager = Manager()
-            messages = manager.list(range(len(obj)))
+            l = manager.list(range(len(obj)))
 
             tasks = []
             pos = 0
             for o in obj:  # map all objects to new meassage objects
                 tasks.append(
-                    Process(target=mapper_task, args=(messages, pos, msg_class, o, include_relationships, do_nesting)))
+                    Process(target=mapper_task, args=(l, pos, msg_class, o, include_relationships, do_nesting)))
                 pos = pos + 1
 
             for t in tasks:
@@ -676,6 +676,10 @@ class DataMessage(object): #JSON API Data Object see: http://jsonapi.org/format/
 
             for t in tasks:
                 t.join()
+
+            messages = []
+            for m in l:
+                messages.append(m)
 
             return messages
         else: #map a single object to a message object.

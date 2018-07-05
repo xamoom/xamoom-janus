@@ -2,8 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="501c4683-48ae-461c-a3b8-8b4e4b30f406" name="Default" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/janus/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/janus/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/janus/janus.py" beforeDir="false" afterPath="$PROJECT_DIR$/janus/janus.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/janus/thread_util.py" beforeDir="false" afterPath="$PROJECT_DIR$/janus/thread_util.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/setup.py" beforeDir="false" afterPath="$PROJECT_DIR$/setup.py" afterDir="false" />
     </list>
@@ -19,8 +19,8 @@
       <file leaf-file-name="janus.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/janus/janus.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="659">
-              <caret line="671" column="29" lean-forward="true" selection-start-line="671" selection-start-column="29" selection-end-line="671" selection-end-column="29" />
+            <state relative-caret-position="608">
+              <caret line="683" column="27" lean-forward="true" selection-start-line="683" selection-start-column="27" selection-end-line="683" selection-end-column="27" />
               <folding>
                 <element signature="e#1238#1249#0" expanded="true" />
               </folding>
@@ -43,8 +43,8 @@
       <file leaf-file-name="thread_util.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/janus/thread_util.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="272">
-              <caret line="16" column="1" selection-start-line="16" selection-start-column="1" selection-end-line="16" selection-end-column="1" />
+            <state relative-caret-position="799">
+              <caret line="47" column="15" lean-forward="true" selection-start-line="47" selection-start-column="15" selection-end-line="47" selection-end-column="15" />
             </state>
           </provider>
         </entry>
@@ -377,20 +377,20 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/janus/janus.py">
+    <entry file="file://$PROJECT_DIR$/janus/thread_util.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="659">
-          <caret line="671" column="29" lean-forward="true" selection-start-line="671" selection-start-column="29" selection-end-line="671" selection-end-column="29" />
-          <folding>
-            <element signature="e#1238#1249#0" expanded="true" />
-          </folding>
+        <state relative-caret-position="799">
+          <caret line="47" column="15" lean-forward="true" selection-start-line="47" selection-start-column="15" selection-end-line="47" selection-end-column="15" />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/janus/thread_util.py">
+    <entry file="file://$PROJECT_DIR$/janus/janus.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="272">
-          <caret line="16" column="1" selection-start-line="16" selection-start-column="1" selection-end-line="16" selection-end-column="1" />
+        <state relative-caret-position="608">
+          <caret line="683" column="27" lean-forward="true" selection-start-line="683" selection-start-column="27" selection-end-line="683" selection-end-column="27" />
+          <folding>
+            <element signature="e#1238#1249#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
