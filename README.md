@@ -23,3 +23,5 @@ def get(entity_id):
     return resp #simply return the message object. Janus takes care of the rest.
 ```
 For more information please head over to the [Wiki](https://github.com/xamoom/xamoom-janus/wiki)
+
+Generate distr -> python3 setup.py sdist bdist_wheel

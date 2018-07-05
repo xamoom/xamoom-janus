@@ -20,7 +20,7 @@ import json
 from janus.janus_logging import janus_logger
 import copy
 from janus.exceptions import *
-from thread_util import ThreadWithReturnValue, mapper_task
+from janus.thread_util import ThreadWithReturnValue, mapper_task
 
 class JanusResponse(object): #JSON API Message Object see: http://jsonapi.org/format/#document-structure
     """
