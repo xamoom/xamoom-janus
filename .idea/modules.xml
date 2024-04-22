@@ -2,6 +2,12 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/../xamoom-cloud3/.idea/xamoom-cloud3.iml" filepath="$PROJECT_DIR$/../xamoom-cloud3/.idea/xamoom-cloud3.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../xamoom-core-services-customer-content/.idea/xamoom-core-services-customer-content.iml" filepath="$PROJECT_DIR$/../xamoom-core-services-customer-content/.idea/xamoom-core-services-customer-content.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../xamoom-core-services-customer-statistics/.idea/xamoom-core-services-customer-statistics.iml" filepath="$PROJECT_DIR$/../xamoom-core-services-customer-statistics/.idea/xamoom-core-services-customer-statistics.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../xamoom-core-services-customer-system/.idea/xamoom-core-services-customer-system.iml" filepath="$PROJECT_DIR$/../xamoom-core-services-customer-system/.idea/xamoom-core-services-customer-system.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../xamoom-core-services-customer-user/.idea/xamoom-core-services-customer-user.iml" filepath="$PROJECT_DIR$/../xamoom-core-services-customer-user/.idea/xamoom-core-services-customer-user.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../xamoom-core-services-dispatcher/.idea/xamoom-core-services-dispatcher.iml" filepath="$PROJECT_DIR$/../xamoom-core-services-dispatcher/.idea/xamoom-core-services-dispatcher.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/xamoom-janus.iml" filepath="$PROJECT_DIR$/.idea/xamoom-janus.iml" />
     </modules>
   </component>

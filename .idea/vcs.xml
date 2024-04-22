@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="VcsDirectoryMappings">
-    <mapping directory="$PROJECT_DIR$" vcs="Git" />
+    <mapping directory="" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../xamoom-cloud3" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../xamoom-core-services-customer-content" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../xamoom-core-services-customer-statistics" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../xamoom-core-services-customer-system" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../xamoom-core-services-customer-user" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../xamoom-core-services-dispatcher" vcs="Git" />
   </component>
 </project>
