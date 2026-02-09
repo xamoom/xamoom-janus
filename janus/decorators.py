@@ -61,6 +61,8 @@ class jsonapi(object):
     def __call__(self, f):
         def wrapped_f(*a, **ka):
             try:
+                self.meta = None
+
                 #first check if this is not a HTTP OPTIONS call using a method defined based on the  WS framework.
                 #if it is one return empty array and do nothing else.
                 if self.options_hook != None:
@@ -143,7 +145,7 @@ class jsonapi(object):
                 if self.error_hook != None:
                     self.error_hook(int(err_msg.status),err_msg,tb)
 
-                message = JsonApiMessage(errors=err_msg,meta=self.meta).to_json()
+                message = JsonApiMessage(errors=err_msg).to_json()
 
                 janus_logger.error("Traceback: " + tb)
 
